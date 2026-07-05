@@ -108,7 +108,9 @@ class McpServer(
             val request =
                 RunAllTestsRequest(
                     buildMode =
-                        if (skipMainConfigurationUpdate == true) {
+                        if (skipMainConfigurationUpdate == true ||
+                            (skipMainConfigurationUpdate == null && properties.build.skipMainConfiguration)
+                        ) {
                             BuildMode.SKIP_MAIN_CONFIGURATION
                         } else {
                             BuildMode.FULL
@@ -163,7 +165,9 @@ class McpServer(
                 RunModuleTestsRequest(
                     moduleName = moduleName,
                     buildMode =
-                        if (skipMainConfigurationUpdate == true) {
+                        if (skipMainConfigurationUpdate == true ||
+                            (skipMainConfigurationUpdate == null && properties.build.skipMainConfiguration)
+                        ) {
                             BuildMode.SKIP_MAIN_CONFIGURATION
                         } else {
                             BuildMode.FULL
@@ -204,13 +208,25 @@ class McpServer(
             description = "Выполнить полную загрузку всех исходников, игнорируя кэш изменений. По умолчанию используется инкрементальная загрузка.",
             required = false,
         ) fullRebuild: Boolean? = null,
+        @ToolParam(
+            description = "Не обновлять основную конфигурацию перед сборкой. Обновляются только расширения. По умолчанию используется значение из конфигурации app.build.skipMainConfiguration.",
+            required = false,
+        ) skipMainConfigurationUpdate: Boolean? = null,
     ): McpBuildResponse {
         logManager.cleanLogIfEnabled(properties.cleanLogBeforeExecution)
         logger.info { "Выполнение сборки проекта${if (fullRebuild == true) " (полная)" else ""}" }
 
         try {
             val start = TimeSource.Monotonic.markNow()
-            val buildResult = launcherService.build(fullRebuild = fullRebuild ?: false)
+            val buildMode =
+                if (skipMainConfigurationUpdate == true ||
+                    (skipMainConfigurationUpdate == null && properties.build.skipMainConfiguration)
+                ) {
+                    BuildMode.SKIP_MAIN_CONFIGURATION
+                } else {
+                    BuildMode.FULL
+                }
+            val buildResult = launcherService.build(fullRebuild = fullRebuild ?: false, mode = buildMode)
             val duration = start.elapsedNow()
 
             return if (buildResult.success) {

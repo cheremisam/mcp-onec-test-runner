@@ -14,6 +14,9 @@
 ![1C:Enterprise](https://img.shields.io/badge/1C%3AEnterprise-8.3.10%2B-F6C915)
 [![1C:EDT](https://img.shields.io/badge/1C%3AEDT-2025.1%2B-4D77CF)](https://github.com/1C-Company/1c-edt-issues/issues/1758)
 
+> **Форк от alkoleft/mcp-onec-test-runner** — содержит доработки, не принятые в upstream.
+> Список изменений см. в разделе [Изменения в форке](#изменения-в-форке).
+
 Инструмент, который позволяет запускать тесты YaXUnit и собирать проекты 1С прямо из AI‑ассистентов (Claude, GPT, Cursor, VS Code и др.) с помощью протокола MCP (Model Context Protocol).
 
 ## Описание
@@ -285,6 +288,60 @@ app:
 - [Application Configuration](docs/APPLICATION_CONFIGURATION.md) — подробный пошаговый гид по настройке `application.yml`
 - [IDE Setup](docs/IDE_SETUP.md) — подробная инструкция по настройке MCP сервера в различных IDE и AI-ассистентах
 - [Changelog](CHANGELOG.md) — история изменений проекта
+
+## Изменения в форке
+
+Форк добавляет функциональность пропуска загрузки основной конфигурации
+для ускорения сборки и тестирования, когда основная конфигурация не менялась.
+
+### Доступные ветки
+
+| Ветка | Основание | Описание |
+| --- | --- | --- |
+| `backport/skip-main-config-v0.5.2` | `v0.5.2` | Пропуск основной конфигурации для версии 0.5.2 |
+
+### Изменения
+
+**Параметр `skipMainConfigurationUpdate` у MCP-инструментов**
+
+Добавлен опциональный параметр `skipMainConfigurationUpdate` для инструментов:
+- `run_all_tests`
+- `run_module_tests`
+- `build_project`
+
+Если `true` — загружаются только расширения, основная конфигурация пропускается.
+Если не указан — используется значение из конфигурации (см. ниже).
+Если `false` — выполняется полная загрузка (даже если конфигурация включает `skipMainConfiguration`).
+
+**Настройка `app.build.skipMainConfiguration`**
+
+Добавлена новая опция конфигурации в `application.yml`:
+
+```yaml
+app:
+  build:
+    skipMainConfiguration: true   # по умолчанию: false
+```
+
+Работает как значение по умолчанию, если параметр MCP-инструмента не передан явно.
+
+### Обновление на новую версию upstream
+
+При выходе новой версии upstream создайте свежую ветку от тега:
+
+```bash
+git fetch upstream
+git checkout v0.6.0                 # или новая версия
+git checkout -b custom/skip-main-config-v0.6.0
+git cherry-pick a04d49a             # коммит с skipMainConfigurationUpdate
+git cherry-pick <коммит-с-доработками>
+```
+
+Конфликты при `cherry-pick` разрешаются вручную. Тесты после слияния:
+
+```bash
+./gradlew test
+```
 
 ## Лицензия
 
