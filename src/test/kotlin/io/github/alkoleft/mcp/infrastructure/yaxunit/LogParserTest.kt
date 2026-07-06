@@ -101,4 +101,64 @@ class LogParserTest {
         assertTrue(errors[0].contains("Последняя ошибка"))
         assertTrue(errors[0].contains("Описание ошибки"))
     }
+
+    // ────────────────────────────────────────────
+    // extractErrorsFromOutput — парсинг из строки
+    // ────────────────────────────────────────────
+
+    @Test
+    fun `extractErrorsFromOutput should extract errors from multiline output`() {
+        val output =
+            """
+            |23:21:01.485 [Клиент][INF]: Инициализация
+            |23:21:01.917 [Клиент][ERR]: Первая ошибка
+            |Описание первой ошибки
+            |23:21:02.100 [Клиент][INF]: Информационное сообщение
+            |23:21:02.200 [Клиент][ERR]: Вторая ошибка
+            |Описание второй ошибки
+            |Дополнительная информация
+            |23:21:02.300 [Клиент][INF]: Конец
+            """.trimMargin()
+        val parser = LogParser()
+        val errors = parser.extractErrorsFromOutput(output)
+        assertEquals(2, errors.size)
+        assertTrue(errors[0].contains("Первая ошибка"))
+        assertTrue(errors[1].contains("Вторая ошибка"))
+        assertTrue(errors[1].contains("Дополнительная информация"))
+    }
+
+    @Test
+    fun `extractErrorsFromOutput should return empty list for clean output`() {
+        val output =
+            """
+            |23:21:01.485 [Клиент][INF]: Инициализация
+            |23:21:01.518 [Клиент][INF]: Загрузка тестовых сценариев
+            """.trimMargin()
+        val parser = LogParser()
+        val errors = parser.extractErrorsFromOutput(output)
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `extractErrorsFromOutput should return empty list for blank output`() {
+        val parser = LogParser()
+        assertTrue(parser.extractErrorsFromOutput("").isEmpty())
+        assertTrue(parser.extractErrorsFromOutput("   ").isEmpty())
+    }
+
+    @Test
+    fun `extractErrorsFromOutput should extract server errors with Server prefix`() {
+        val output =
+            """
+            |23:21:01.485 [Клиент][INF]: Инициализация
+            |23:21:01.917 [Сервер][ERR]: Ошибка на сервере
+            |Причина ошибки на сервере
+            |23:21:02.100 [Клиент][INF]: Продолжение
+            """.trimMargin()
+        val parser = LogParser()
+        val errors = parser.extractErrorsFromOutput(output)
+        assertEquals(1, errors.size)
+        assertTrue(errors[0].contains("Ошибка на сервере"))
+        assertTrue(errors[0].contains("Причина ошибки на сервере"))
+    }
 }

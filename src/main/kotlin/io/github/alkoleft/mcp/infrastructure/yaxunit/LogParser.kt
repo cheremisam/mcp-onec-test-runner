@@ -54,10 +54,27 @@ class LogParser {
             logger.warn { "Файл лога не найден: $logFilePath" }
             return emptyList()
         }
+        return extractErrorsFromLines(Files.readAllLines(logFilePath).asSequence())
+    }
+
+    /**
+     * Извлекает все ошибки из строки вывода (например, stdout процесса 1С).
+     * Использует ту же логику, что [extractErrors], но без чтения файла.
+     *
+     * @param output строка с выводом лога
+     * @return список строк с ошибками, каждая строка содержит весь блок ошибки
+     */
+    fun extractErrorsFromOutput(output: String): List<String> {
+        if (output.isBlank()) return emptyList()
+        return extractErrorsFromLines(output.lineSequence())
+    }
+
+    private fun extractErrorsFromLines(lines: Sequence<String>): List<String> {
         val errors = mutableListOf<String>()
         val errorBlockBuilder = StringBuilder()
         var inErrorBlock = false
-        forEachLine(logFilePath) { line ->
+
+        lines.forEach { line ->
             when {
                 isErrorLine(line) -> {
                     if (inErrorBlock) {
@@ -83,13 +100,6 @@ class LogParser {
             errors.add(errorBlockBuilder.toString().trim())
         }
         return errors
-    }
-
-    fun forEachLine(
-        file: Path,
-        block: (String) -> Unit,
-    ) = Files.newBufferedReader(file).use { reader ->
-        reader.lineSequence().forEach(block)
     }
 
     /**

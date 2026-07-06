@@ -39,6 +39,7 @@ data class ApplicationProperties(
     val platformVersion: String = "",
     val tools: ToolsProperties = ToolsProperties(),
     val build: BuildProperties = BuildProperties(),
+    val yaxunit: YaxUnitProperties = YaxUnitProperties(),
 ) {
     /**
      * Очищать лог перед каждым выполнением tool.

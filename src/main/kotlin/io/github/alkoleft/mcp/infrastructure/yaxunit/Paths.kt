@@ -21,13 +21,12 @@
 
 package io.github.alkoleft.mcp.infrastructure.yaxunit
 
-import java.nio.file.Files
-import java.nio.file.Path
-
+/**
+ * Устаревшие функции генерации путей.
+ * Заменены на:
+ * - YaXUnitRunner.configPath(tempDirectory)
+ * - YaXUnitRunner.reportPath(tempDirectory)
+ * - ResolvedYaxUnitLogging.resolve() (управляет logPath)
+ */
+@Deprecated("Используйте YaXUnitRunner.configPath/reportPath")
 const val TEST_PATH = "tests"
-
-fun configPath(): Path = Files.createTempFile("yaxunit-config-", ".json")
-
-fun reportPath() = Files.createTempFile("yaxunit-report-", ".xml").toString()
-
-fun logPath() = Files.createTempFile("yaxunit-log-", ".log").toString()

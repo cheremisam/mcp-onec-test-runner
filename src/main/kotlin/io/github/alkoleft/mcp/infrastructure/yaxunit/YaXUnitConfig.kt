@@ -25,6 +25,7 @@ import io.github.alkoleft.mcp.application.actions.test.yaxunit.RunAllTestsReques
 import io.github.alkoleft.mcp.application.actions.test.yaxunit.RunListTestsRequest
 import io.github.alkoleft.mcp.application.actions.test.yaxunit.RunModuleTestsRequest
 import io.github.alkoleft.mcp.application.actions.test.yaxunit.TestExecutionRequest
+import io.github.alkoleft.mcp.configuration.properties.ResolvedYaxUnitLogging
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger { }
@@ -58,15 +59,24 @@ data class TestFilter(
     val tests: List<String>? = null,
 )
 
-fun TestExecutionRequest.toConfig(): YaXUnitConfig =
+/**
+ * Создаёт конфигурацию YaXUnit для запроса на выполнение тестов.
+ *
+ * @param reportPath путь к файлу отчёта jUnit
+ * @param logging разрешённая конфигурация логирования
+ */
+fun TestExecutionRequest.toConfig(
+    reportPath: String,
+    logging: ResolvedYaxUnitLogging,
+): YaXUnitConfig =
     YaXUnitConfig(
         filter = filter(this),
-        reportPath = reportPath(),
+        reportPath = reportPath,
         logging =
             LoggingConfig(
-                file = logPath(),
-                console = false,
-                level = "info",
+                file = logging.filePath,
+                console = logging.console,
+                level = logging.level,
             ),
         closeAfterTests = true,
         reportFormat = "jUnit",

@@ -24,12 +24,15 @@ package io.github.alkoleft.mcp.infrastructure.yaxunit
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.alkoleft.mcp.application.actions.test.yaxunit.TestExecutionRequest
 import io.github.alkoleft.mcp.application.actions.test.yaxunit.YaXUnitExecutionResult
+import io.github.alkoleft.mcp.configuration.properties.ApplicationProperties
+import io.github.alkoleft.mcp.configuration.properties.ResolvedYaxUnitLogging
 import io.github.alkoleft.mcp.infrastructure.platform.dsl.PlatformDsl
 import io.github.alkoleft.mcp.infrastructure.platform.dsl.process.ProcessResult
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.UUID
 import kotlin.io.path.Path
 
 private val logger = KotlinLogging.logger { }
@@ -42,12 +45,13 @@ private val logger = KotlinLogging.logger { }
 class YaXUnitRunner(
     private val platformDsl: PlatformDsl,
     private val objectMapper: ObjectMapper,
+    private val properties: ApplicationProperties,
 ) {
     fun executeTests(request: TestExecutionRequest): YaXUnitExecutionResult {
         logger.info { "Запуск выполнения тестов YaXUnit для ${request.javaClass.simpleName}" }
 
         // Создаем временную конфигурацию
-        val (configPath, config) = createConfigFile(request)
+        val (configPath, config, resolvedLogging) = createConfigFile(request)
 
         // Запускаем тесты через EnterpriseDsl
         logger.debug { "Выполнение тестов" }
@@ -71,17 +75,38 @@ class YaXUnitRunner(
         )
     }
 
-    private fun createConfigFile(request: TestExecutionRequest): Pair<Path, YaXUnitConfig> {
-        val config = request.toConfig()
+    private fun createConfigFile(request: TestExecutionRequest): Triple<Path, YaXUnitConfig, ResolvedYaxUnitLogging> {
+        val tempDir = tempDirectory()
+        val resolvedLogging =
+            ResolvedYaxUnitLogging.resolve(
+                logging = properties.yaxunit.logging,
+                connectionString = properties.connection.connectionString,
+                tempDirectory = tempDir,
+            )
+        val reportPath = reportPath(tempDir)
+
+        val config = request.toConfig(reportPath, resolvedLogging)
         config.validate().also {
             if (!it.isValid) {
                 logger.warn { "Проверка конфигурации не пройдена: ${it.errors.joinToString(", ")}" }
             }
         }
-        val configPath = configPath()
+        val configPath = configPath(tempDir)
         objectMapper.writeValue(configPath.toFile(), config)
 
-        return configPath to config
+        return Triple(configPath, config, resolvedLogging)
+    }
+
+    /**
+     * Возвращает директорию для временных файлов YaXUnit.
+     * Если useWorkPath=true — использует app.workPath/yaxunit/,
+     * иначе — системную временную директорию.
+     */
+    private fun tempDirectory(): Path? {
+        if (!properties.yaxunit.logging.useWorkPath) return null
+        val dir = properties.workPath.resolve("yaxunit")
+        Files.createDirectories(dir)
+        return dir
     }
 
     /**
@@ -92,4 +117,27 @@ class YaXUnitRunner(
             .enterprise {
                 runArguments("RunUnitTests=${configPath.toAbsolutePath()}")
             }.run()
+
+    companion object {
+        /**
+         * Создаёт путь к файлу конфигурации YaXUnit.
+         * Если tempDirectory задан, файл создаётся в нём.
+         */
+        fun configPath(tempDirectory: Path? = null): Path {
+            val dir = tempDirectory ?: Files.createTempDirectory("yaxunit-config-")
+            return dir.resolve("yaxunit-config-${UUID.randomUUID()}.json")
+        }
+
+        /**
+         * Создаёт путь к файлу отчёта jUnit.
+         * Если tempDirectory задан, файл создаётся в нём.
+         */
+        fun reportPath(tempDirectory: Path? = null): String {
+            val dir = tempDirectory ?: run {
+                val tmp = Files.createTempDirectory("yaxunit-report-")
+                tmp
+            }
+            return dir.resolve("yaxunit-report-${UUID.randomUUID()}.xml").toString()
+        }
+    }
 }

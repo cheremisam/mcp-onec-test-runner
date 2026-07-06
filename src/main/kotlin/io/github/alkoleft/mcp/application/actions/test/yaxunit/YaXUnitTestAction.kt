@@ -60,7 +60,13 @@ class YaXUnitTestAction(
                 .also { (report, duration) ->
                     state.setReport(report, duration)
                 }
-            executionResult.logPath?.also { state.setLogErrors(LogParser().extractErrors(it)) }
+            val logParser = LogParser()
+            val logErrors =
+                executionResult.logPath?.let { logParser.extractErrors(it) }
+                    ?: logParser.extractErrorsFromOutput(executionResult.commandResult.output)
+            if (logErrors.isNotEmpty()) {
+                state.setLogErrors(logErrors)
+            }
 
             return state.toResult(start.elapsedNow())
         } catch (e: Exception) {
