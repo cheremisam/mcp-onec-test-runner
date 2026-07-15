@@ -118,7 +118,17 @@ class LauncherService(
     private fun convertSources(mode: BuildMode): ConvertResult {
         val sourceSetContext = sourceSetsService.getEdtSourceSet()!!
 
-        val changes = changeAnalysisAction.run(sourceSetContext)
+        // В режиме SKIP_MAIN_CONFIGURATION не сканируем основную конфигурацию EDT
+        val scanContext =
+            if (mode == BuildMode.SKIP_MAIN_CONFIGURATION) {
+                sourceSetContext.copy(
+                    sourceSet = sourceSetContext.sourceSet.subSourceSet { it.type == SourceSetType.EXTENSION },
+                )
+            } else {
+                sourceSetContext
+            }
+
+        val changes = changeAnalysisAction.run(scanContext)
         val steps = mutableListOf<ActionStepResult>()
         steps.addAll(changes.steps)
         if (!changes.hasChanges) {
@@ -182,7 +192,18 @@ class LauncherService(
         mode: BuildMode,
     ): BuildResult {
         val sourceSetContext = sourceSetsService.getDesignerSourceSet()!!
-        val changes = changeAnalysisAction.run(sourceSetContext)
+
+        // В режиме SKIP_MAIN_CONFIGURATION не сканируем основную конфигурацию
+        val scanContext =
+            if (mode == BuildMode.SKIP_MAIN_CONFIGURATION) {
+                sourceSetContext.copy(
+                    sourceSet = sourceSetContext.sourceSet.subSourceSet { it.type == SourceSetType.EXTENSION },
+                )
+            } else {
+                sourceSetContext
+            }
+
+        val changes = changeAnalysisAction.run(scanContext)
         steps.addAll(changes.steps)
 
         if (!changes.hasChanges) {
