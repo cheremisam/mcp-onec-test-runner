@@ -36,6 +36,25 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class YaXUnitConfigTest {
+    @Test
+    fun `runtime artifacts do not pollute YAXUNIT export on case insensitive filesystems`(
+        @TempDir workPath: Path,
+    ) {
+        val exportedExtension = Files.createDirectories(workPath.resolve("YAXUNIT"))
+        Files.writeString(exportedExtension.resolve("Configuration.xml"), "metadata")
+        val artifacts = Files.createDirectories(YaXUnitRunner.artifactsDirectory(workPath))
+        Files.writeString(YaXUnitRunner.configPath(artifacts), "{}")
+        Files.writeString(Path.of(YaXUnitRunner.reportPath(artifacts)), "<testsuites/>")
+
+        Files.list(exportedExtension).use { files ->
+            assertEquals(listOf("Configuration.xml"), files.map { it.fileName.toString() }.toList())
+        }
+        assertTrue(
+            !artifacts.toString().lowercase().startsWith(exportedExtension.toString().lowercase()),
+            "Reports and launch settings must not become Designer metadata changes",
+        )
+    }
+
     private val serverConnectionString = "Srvr='rrpk-334';Ref='DemoAI';"
     private val fileConnectionString = "File='C:\\test\\ib';"
     private val unknownConnectionString = "some=unknown"

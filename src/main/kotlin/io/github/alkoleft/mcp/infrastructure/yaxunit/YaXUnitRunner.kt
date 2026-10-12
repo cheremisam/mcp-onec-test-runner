@@ -99,12 +99,12 @@ class YaXUnitRunner(
 
     /**
      * Возвращает директорию для временных файлов YaXUnit.
-     * Если useWorkPath=true — использует app.workPath/yaxunit/,
+     * Если useWorkPath=true — использует app.workPath/.metr-tests/yaxunit/,
      * иначе — системную временную директорию.
      */
     private fun tempDirectory(): Path? {
         if (!properties.yaxunit.logging.useWorkPath) return null
-        val dir = properties.workPath.resolve("yaxunit")
+        val dir = artifactsDirectory(properties.workPath)
         Files.createDirectories(dir)
         return dir
     }
@@ -119,6 +119,10 @@ class YaXUnitRunner(
             }.run()
 
     companion object {
+        // On Windows "yaxunit" and the exported extension "YAXUNIT" are the
+        // same directory. Keep runtime artifacts outside all source sets.
+        internal fun artifactsDirectory(workPath: Path): Path = workPath.resolve(".metr-tests").resolve("yaxunit")
+
         /**
          * Создаёт путь к файлу конфигурации YaXUnit.
          * Если tempDirectory задан, файл создаётся в нём.
